@@ -14,7 +14,7 @@ if [ "$1" = "-h" -o "$1" = "--help" ]; then
 	echo "	-s, --secure 	configure a very secure jail with the bare minimum"
 	echo "			of executables and libraries"
 	echo ""
-	echo "Remember: must be run as root to be 100% successful"
+	echo "Remember: must be run as root to 100% successful. When script prompts for users, it creates their home directory in the jail and assumes they already exist as users on the system and gives them ownership of their home directories. If they don't yet exist, you will have to manually change the ownership of their home directories after the script runs."
 fi
 
 copy_libraries(){
@@ -65,11 +65,16 @@ if [ "$1" = "-s" -o "$1" = "--secure" ]; then
 	mkdir -p $path/{dev,etc,lib,usr,bin,home}
 	mkdir -p $path/usr/bin
 	user="none"
-	while [ "$user" != "" ]; do
+	while [ true ]; do
 		read -p "Enter users to be placed in jail (leave blank if no more users): " user
+		if [ "$user" = "" ]; then
+			break;
+		fi
 		mkdir -p $path/home/$user
+		chmod 750 $path/home/$user
+		chown -f $user $path/home/$user
 	done
-	chown root.root $path
+	chown -f root.root $path
 	mknod -m 666 $path/dev/null c 1 3
 
 	#copy over bare minimum files
@@ -113,11 +118,16 @@ if [ "$#" -eq 0 ]; then
 	mkdir -p $path/{dev,etc,lib,usr,bin,home}
 	mkdir -p $path/usr/bin
 	user="none"
-	while [ "$user" != "" ]; do
+	while [ true ]; do
 		read -p "Enter users to be placed in jail (leave blank if no more users): " user
+		if [ "$user" = "" ]; then
+			break;
+		fi
 		mkdir -p $path/home/$user
+		chmod 750 $path/home/$user
+		chown -f $user $path/home/$user
 	done
-	chown root.root $path
+	chown -f root.root $path
 	mknod -m 666 $path/dev/null c 1 3
 
 	#copy over bare minimum files
