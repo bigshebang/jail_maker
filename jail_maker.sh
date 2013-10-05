@@ -14,7 +14,7 @@ if [ "$1" = "-h" -o "$1" = "--help" ]; then
 	echo "	-s, --secure 	configure a very secure jail with the bare minimum"
 	echo "			of executables and libraries"
 	echo ""
-	echo "Remember: must be run as root to 100% successful"
+	echo "Remember: must be run as root to be 100% successful"
 fi
 
 copy_libraries(){
