@@ -44,6 +44,8 @@ copy_libraries(){
 	fi
 }
 
+error_file=".jm_error"
+
 if [ "$1" = "-s" -o "$1" = "--secure" ]; then
 	if [ "$#" -ne 2 ]; then
 		echo "A jail path must be specified with the --secure (-s) option."
@@ -100,7 +102,12 @@ if [ "$1" = "-s" -o "$1" = "--secure" ]; then
 	#copy appropriate libraries
 	for exec in $@; do
 		copy_libraries $exec
-	done
+	done 2> $error_file
+
+	if test -e $error_file; then
+		echo "Some libraries may not have copied properly"
+		rm $error_file
+	fi
 fi
 
 if [ "$#" -eq 0 ]; then
@@ -136,6 +143,43 @@ if [ "$#" -eq 0 ]; then
 	cp /etc/nsswitch.conf $path/etc
 	cp /etc/hosts $path/etc
 
-	#prompt for which executables they would like
+	#ask and copy executables
+	echo "Which executables would you like in your jail?"
+	common_bins=`ls /bin`
 
+	for i in $common_bins; do
+		read -p "$i (Y/N):" choice
+		choice=`echo $choice | tr '[:lower:]' '[:upper:]'`
+		if [ "$choice" = "Y" -o "$choice" = "YES" ]; then
+			cp /bin/$i $path/bin
+			bins+="/bin/$i "
+		fi
+	done
+
+	read -p "Would you like to choose between a few common binaries in /usr/bin (Y/N): " more_bins
+	more_bins=`echo $more_bins | tr '[:lower:]' '[:upper:]'`
+	if [ "$more_bins" = "YES" -o "$more_bins" = "Y" ]; then
+		other_bins="awk clear cut diff expr head less man nano paste pico split strings strip tail tee test touch tr uniq users uptime vi w wall wc wget whatis who whoami yes zip zipgrep"
+
+		for i in $other_bins; do
+			read -p "$i (Y/N):" choice
+			choice=`echo $choice | tr '[:lower:]' '[:upper:]'`
+			if [ "$choice" = "Y" -o "$choice" = "YES" ]; then
+				cp /usr/bin/$i $path/usr/bin
+				bins+="/usr/bin/$i "
+			fi
+		done
+	fi
+
+	#copy appropriate libraries
+	set $bins
+
+	for exec in $@; do
+		copy_libraries $exec
+	done 2> $error_file
+
+	if test -e $error_file; then
+		echo "Some libraries may not have copied properly"
+		rm $error_file
+	fi
 fi
