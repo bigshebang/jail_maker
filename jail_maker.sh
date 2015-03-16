@@ -22,6 +22,8 @@ if [ "$USER" != "root" ]; then
 	exit 1
 fi
 
+sugJail="/var/jail"
+
 copy_libraries(){ #copies libraries for a specific binary
 	# iggy ld-linux* file as it is not shared one
 	FILES="$(/usr/bin/ldd $1 | /usr/bin/awk '{print $3}' | /bin/grep -ve '^(' | /bin/grep -ve '^$')"
@@ -46,6 +48,13 @@ copy_libraries(){ #copies libraries for a specific binary
 	else
 		:
 	fi
+}
+
+suggestJail(){ #suggest a valid jail that doesn't already exist
+	sugJail="/var/jail"
+	while [ -d "$sugJail" ]; do
+		sugJail="/var/jail-$RANDOM"
+	done
 }
 
 error_file=".jm_error"
@@ -169,12 +178,20 @@ fi
 
 if [ "$#" -eq 0 ]; then
 	echo "Initializing manual setup"
-	read -p "Enter path of jail directory: " dir
+	suggestJail #get random jail
+	read -p "Enter path of jail directory [$sugJail]: " dir
+	if [ "$dir" = "" ]; then
+		dir="$sugJail"
+	fi
 	
 	while [ -d "$dir" ]; do
 		dir="${dir// /_}" #replace any spaces with underscores
+		suggestJail #get random jail
 		echo "That directory already exists. Please enter another location." >&2
-		read -p "Enter path of jail directory: " dir
+		read -p "Enter path of jail directory [$sugJail]: " dir
+		if [ "$dir" = "" ]; then
+			dir="$sugJail"
+		fi
 	done
 
 	/bin/mkdir -p "$dir"
@@ -221,17 +238,21 @@ if [ "$#" -eq 0 ]; then
 	/bin/cp /etc/hosts ${path}/etc
 
 	#ask and copy executables
-	echo "Which executables would you like in your jail?"
-	common_bins=`/bin/ls /bin`
+	executables="sh bash ls cat cp mv rm mkdir rmdir dir pwd"
+	read -p "$executables - Would you like to copy these binaries (a/s/n): " choice
+	choice=`echo $choice | /usr/bin/tr '[:lower:]' '[:upper:]'`
 
-	for i in $common_bins; do
-		read -p "$i (Y/N):" choice
-		choice=`echo $choice | /usr/bin/tr '[:lower:]' '[:upper:]'`
-		if [ "$choice" = "Y" -o "$choice" = "YES" ]; then
-			/bin/cp /bin/$i ${path}/bin
-			bins="$bins /bin/$i"
-		fi
-	done
+	# echo "Which executables would you like in your jail?"
+	# common_bins=`/bin/ls /bin`
+
+	# for i in $common_bins; do
+	# 	read -p "$i (Y/N):" choice
+	# 	choice=`echo $choice | /usr/bin/tr '[:lower:]' '[:upper:]'`
+	# 	if [ "$choice" = "Y" -o "$choice" = "YES" ]; then
+	# 		/bin/cp /bin/$i ${path}/bin
+	# 		bins="$bins /bin/$i"
+	# 	fi
+	# done
 
 	read -p "Would you like to choose between a few common binaries in /usr/bin (Y/N): " more_bins
 	more_bins=`echo $more_bins | /usr/bin/tr '[:lower:]' '[:upper:]'`
